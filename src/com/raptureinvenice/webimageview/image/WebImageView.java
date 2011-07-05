@@ -26,21 +26,43 @@ public class WebImageView extends ImageView {
 		WebImageCache.setDiskCachingEnabled(enabled);
 	}
 
+	public static void setDiskCachingDefaultCacheTimeout(int seconds) {
+		WebImageCache.setDiskCachingDefaultCacheTimeout(seconds);
+	}
+
 	@Override
 	public void onDetachedFromWindow() {
 		// cancel loading if view is removed
 		cancelCurrentLoad();
 	}
-	
-	public void setImageWithURL(Context context, String urlString, int placeholderDrawableId) {
-		setImageWithURL(context, urlString, getResources().getDrawable(placeholderDrawableId));
+
+	public void setImageWithURL(Context context, String urlString, Drawable placeholderDrawable, int diskCacheTimeoutInSeconds) {
+		setImageDrawable(placeholderDrawable);
+		
+		// get image
+		setImageWithURL(context, urlString, diskCacheTimeoutInSeconds);
 	}
 
 	public void setImageWithURL(Context context, String urlString, Drawable placeholderDrawable) {
 		setImageDrawable(placeholderDrawable);
 		
 		// get image
-		setImageWithURL(context, urlString);
+		setImageWithURL(context, urlString, -1);
+	}
+
+	public void setImageWithURL(final Context context, final String urlString, int diskCacheTimeoutInSeconds) {
+	    final WebImageManager mgr = WebImageManager.getInstance();
+
+	    // cancel any existing request
+	    cancelCurrentLoad();
+	    
+	    // clear
+    	setImageDrawable(null);
+
+    	// load the image any way we can
+	    if (urlString != null) {
+	    	mgr.downloadURL(context, urlString, WebImageView.this, diskCacheTimeoutInSeconds);
+	    }
 	}
 
 	public void setImageWithURL(final Context context, final String urlString) {
@@ -54,7 +76,7 @@ public class WebImageView extends ImageView {
 
     	// load the image any way we can
 	    if (urlString != null) {
-	    	mgr.downloadURL(context, urlString, WebImageView.this);
+	    	mgr.downloadURL(context, urlString, WebImageView.this, -1);
 	    }
 	}
 

@@ -15,7 +15,7 @@ import android.util.Log;
 import com.raptureinvenice.webimageview.cache.WebImageCache;
 
 public class WebImageManagerRetriever extends AsyncTask<Void, Void, Bitmap> {
-	private final String TAG = getClass().getSimpleName();
+	private final static String TAG = WebImageManagerRetriever.class.getSimpleName();
 
 	// cache
 	private static WebImageCache mCache;
@@ -23,14 +23,16 @@ public class WebImageManagerRetriever extends AsyncTask<Void, Void, Bitmap> {
 	// what we're looking for
 	private Context mContext;
 	private String mURLString;
-
+	private int mDiskCacheTimeoutInSeconds;
+	
 	static {
 		mCache = new WebImageCache();
 	}
 	
-	public WebImageManagerRetriever(Context context, String urlString) {
+	public WebImageManagerRetriever(Context context, String urlString, int diskCacheTimeoutInSeconds) {
 		mContext = context;
 		mURLString = urlString;
+		mDiskCacheTimeoutInSeconds = diskCacheTimeoutInSeconds;
 	}
 	
 	@Override
@@ -40,7 +42,7 @@ public class WebImageManagerRetriever extends AsyncTask<Void, Void, Bitmap> {
 
 		// check disk cache first
 		if (bitmap == null) {
-			bitmap = mCache.getBitmapFromDiskCache(mContext, mURLString);
+			bitmap = mCache.getBitmapFromDiskCache(mContext, mURLString, mDiskCacheTimeoutInSeconds);
 			mCache.addBitmapToMemCache(mURLString, bitmap);
 		}
 		

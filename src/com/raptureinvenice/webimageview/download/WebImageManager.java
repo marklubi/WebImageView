@@ -34,11 +34,11 @@ public class WebImageManager {
 		mWaiters = new HashSet<WebImageView>();
 	}
 
-	public void downloadURL(Context context, String urlString, final WebImageView view) {
+	public void downloadURL(Context context, String urlString, final WebImageView view, int diskCacheTimeoutInSeconds) {
 		WebImageManagerRetriever retriever = mRetrievers.get(urlString);
 
 		if (mRetrievers.get(urlString) == null) {
-			retriever = new WebImageManagerRetriever(context, urlString);			
+			retriever = new WebImageManagerRetriever(context, urlString, diskCacheTimeoutInSeconds);			
 			mRetrievers.put(urlString, retriever);
 			mWaiters.add(view);
 

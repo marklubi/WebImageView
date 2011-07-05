@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.SoftReference;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,12 +16,13 @@ import android.graphics.BitmapFactory;
 import android.util.Log;
 
 public class WebImageCache {
-	private final String TAG = getClass().getSimpleName();
+	private final static String TAG = WebImageCache.class.getSimpleName();
 
 	// cache rules
 	private static boolean mIsMemoryCachingEnabled = true;
 	private static boolean mIsDiskCachingEnabled = true;
-	
+	private static int mDefaultDiskCacheTimeoutInSeconds = 60 * 60 * 24; // one day default 
+		
 	private Map<String, SoftReference<Bitmap>> mMemCache;
 	
 	public WebImageCache() {
@@ -29,12 +31,19 @@ public class WebImageCache {
 
 	public static void setMemoryCachingEnabled(boolean enabled) {
 		mIsMemoryCachingEnabled = enabled;
+		Log.v(TAG, "Memory cache " + (enabled ? "enabled" : "disabled") + ".");
 	}
 
 	public static void setDiskCachingEnabled(boolean enabled) {
 		mIsDiskCachingEnabled = enabled;
+		Log.v(TAG, "Disk cache " + (enabled ? "enabled" : "disabled") + ".");
 	}
 
+	public static void setDiskCachingDefaultCacheTimeout(int seconds) {
+		mDefaultDiskCacheTimeoutInSeconds = seconds;
+		Log.v(TAG, "Disk cache timeout set to " + seconds + " seconds.");
+	}
+	
 	public Bitmap getBitmapFromMemCache(String urlString) {
 		if (mIsMemoryCachingEnabled) {
 			synchronized (mMemCache) {
@@ -45,7 +54,9 @@ public class WebImageCache {
 					
 					if (bitmap == null) {
 						mMemCache.remove(urlString);
+				        Log.v(TAG, "Expiring memory cache for URL " + urlString + ".");
 					} else {
+				        Log.v(TAG, "Retrieved " + urlString + " from memory cache.");
 						return bitmap; 
 					}
 				}				
@@ -55,28 +66,41 @@ public class WebImageCache {
 		return null;
 	}
 
-	public Bitmap getBitmapFromDiskCache(Context context, String urlString) {
+	public Bitmap getBitmapFromDiskCache(Context context, String urlString, int diskCacheTimeoutInSeconds) {
 		if (mIsDiskCachingEnabled) {
 			Bitmap bitmap = null;
 			File path = context.getCacheDir();
 	        InputStream is = null;
 	        String encodedURLString = encodedURLString(urlString);
 	        
+	        // correct timeout
+	        if (diskCacheTimeoutInSeconds < 0) {
+	        	diskCacheTimeoutInSeconds = mDefaultDiskCacheTimeoutInSeconds;
+	        }
+	        
 	        File file = new File(path, encodedURLString);
 	
 	        if (file.exists() && file.canRead()) {
-		        try {
-		        	is = new FileInputStream(file);
-			
-		        	bitmap = BitmapFactory.decodeStream(is);
-			        Log.v(TAG, "Retrieved " + urlString + " from cache.");
-		        } catch (Exception ex) {
-		        	Log.e(TAG, "Could not retrieve " + urlString + " from disk cache: " + ex.toString());
-		        } finally {
-		        	try {
-		        		is.close();
-		        	} catch (Exception ex) {}
-		        }
+	        	// check for timeout
+	        	if ((file.lastModified() + (diskCacheTimeoutInSeconds * 1000L)) < new Date().getTime()) {
+	        		Log.v(TAG, "Expiring disk cache (TO: " + diskCacheTimeoutInSeconds + "s) for URL " + urlString);
+	        		
+	        		// expire
+	        		file.delete();
+	        	} else {
+			        try {
+			        	is = new FileInputStream(file);
+				
+			        	bitmap = BitmapFactory.decodeStream(is);
+				        Log.v(TAG, "Retrieved " + urlString + " from disk cache (TO: " + diskCacheTimeoutInSeconds + "s).");
+			        } catch (Exception ex) {
+			        	Log.e(TAG, "Could not retrieve " + urlString + " from disk cache: " + ex.toString());
+			        } finally {
+			        	try {
+			        		is.close();
+			        	} catch (Exception ex) {}
+			        }
+	        	}
 	        }			
 			
 			return bitmap;
@@ -126,10 +150,6 @@ public class WebImageCache {
 	}
 	
 	private String encodedURLString(String urlString) {
-		urlString = urlString.replace("://", "_");
-		urlString = urlString.replace("/", "_");
-		urlString = urlString.replace("\\", "_");
-		
-		return urlString;
+		return urlString.replaceAll("[^A-Za-z0-9]", "#");
 	}
 }
