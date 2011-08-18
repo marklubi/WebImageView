@@ -1,0 +1,8 @@
+#Ignore build files
+bin/
+gen/
+
+#Ignore OSX Noise
+.DS_Store
+
+local.properties
