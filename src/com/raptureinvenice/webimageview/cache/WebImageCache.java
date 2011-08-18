@@ -28,6 +28,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.SoftReference;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -93,14 +95,14 @@ public class WebImageCache {
 			Bitmap bitmap = null;
 			File path = context.getCacheDir();
 	        InputStream is = null;
-	        String encodedURLString = encodedURLString(urlString);
+	        String hashedURLString = hashURLString(urlString);
 	        
 	        // correct timeout
 	        if (diskCacheTimeoutInSeconds < 0) {
 	        	diskCacheTimeoutInSeconds = mDefaultDiskCacheTimeoutInSeconds;
 	        }
 	        
-	        File file = new File(path, encodedURLString);
+	        File file = new File(path, hashedURLString);
 	
 	        if (file.exists() && file.canRead()) {
 	        	// check for timeout
@@ -149,11 +151,11 @@ public class WebImageCache {
 		if (mIsDiskCachingEnabled) {
 			File path =  context.getCacheDir();
 	        OutputStream os = null;
-	        String encodedURLString = encodedURLString(urlString);
+	        String hashedURLString = hashURLString(urlString);
 	        
 	        try {
 		        // NOWORKY File tmpFile = File.createTempFile("wic.", null);
-		        File file = new File(path, encodedURLString);
+		        File file = new File(path, hashedURLString);
 		        os = new FileOutputStream(file.getAbsolutePath());
 		
 		        bitmap.compress(Bitmap.CompressFormat.PNG, 100, os);
@@ -171,7 +173,24 @@ public class WebImageCache {
 		}
 	}
 	
-	private String encodedURLString(String urlString) {
-		return urlString.replaceAll("[^A-Za-z0-9]", "#");
+	private String hashURLString(String urlString) {
+	    try {
+	        // Create MD5 Hash
+	        MessageDigest digest = java.security.MessageDigest.getInstance("MD5");
+	        digest.update(urlString.getBytes());
+	        byte messageDigest[] = digest.digest();
+	        
+	        // Create Hex String
+	        StringBuffer hexString = new StringBuffer();
+	        for (int i=0; i<messageDigest.length; i++)
+	            hexString.append(Integer.toHexString(0xFF & messageDigest[i]));
+	        return hexString.toString();
+	        
+	    } catch (NoSuchAlgorithmException e) {
+	        e.printStackTrace();
+	    }
+	    
+	    //fall back to old method
+	    return urlString.replaceAll("[^A-Za-z0-9]", "#");
 	}
 }
